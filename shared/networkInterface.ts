@@ -19,8 +19,12 @@ type authResponse = {
   registered: boolean
 };
 
+type signInResponse = {
+  sessionToken: string
+};
+
 
 export {
-  type mouseMove, type userInfo, type authValues, 
-  type authResponse, BACKEND_URL
+  type mouseMove, type userInfo, type authValues,
+  type authResponse, type signInResponse, BACKEND_URL
 };

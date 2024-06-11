@@ -1,15 +1,16 @@
 import { FormEvent, useState } from "react";
 
-import { BACKEND_URL, authResponse, authValues } from "../../../shared/networkInterface";
+import { BACKEND_URL, authResponse, authValues } from "../../../../shared/networkInterface";
 
-import "./AuthView.css";
+import "./RegisterView.css";
+import { Link } from "react-router-dom";
 
 type formErrors = {
   username: boolean,
   password: boolean
 };
 
-function AuthView() {
+function RegisterView() {
 
   const [error, setError] = useState(false);
   const [formErrors, setFormErrors] = useState<formErrors>({
@@ -81,13 +82,7 @@ function AuthView() {
   }
 
   return (
-    <>
-      {/* {
-        showAlreadyRegistered && 
-        <div className="registered-modal">
-
-        </div>  
-      } */}
+    <div className="register-container">
       <form onSubmit={(event) => handleSubmit(event)}
         className="auth-form">
         <div className="auth-inputs">
@@ -114,14 +109,14 @@ function AuthView() {
             </div>
           }
         </div>
-
         <button type="submit">Submit</button>
       </form>
-    
-    </>
-    
+      <Link to="/signin">
+        Sign In
+      </Link>
+    </div>
   );
 }
 
-export default AuthView;
+export default RegisterView;
 

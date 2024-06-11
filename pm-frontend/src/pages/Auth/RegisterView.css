@@ -1,0 +1,17 @@
+.register-container {
+    display: flex;
+    justify-content: center;
+}
+
+.auth-error {
+    color: red;
+}
+
+.auth-form {
+    width: 40%;
+}
+
+.auth-inputs {
+    display: flex;
+    flex-direction: column;
+}

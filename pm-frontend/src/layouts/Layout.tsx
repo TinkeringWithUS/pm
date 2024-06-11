@@ -2,6 +2,8 @@ import { ReactNode } from "react";
 
 import Header from "../components/Header";
 
+import "./Layout.css";
+
 type LayoutProps = {
   children: ReactNode
 };
@@ -9,7 +11,7 @@ type LayoutProps = {
 function Layout({ children }: LayoutProps) {
 
   return (
-    <div>
+    <div id="layout-container">
       <Header></Header>
       {children}
     </div>
