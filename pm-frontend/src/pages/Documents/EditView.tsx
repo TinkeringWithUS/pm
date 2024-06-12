@@ -1,3 +1,4 @@
+import { TextEditor } from "../../components/TextEditor";
 
 
 function EditView() {
@@ -5,9 +6,10 @@ function EditView() {
 
 
   return (
-    <div>
-      Edit view
-    </div>
+    <TextEditor>
+
+
+    </TextEditor>
   );
 }
 

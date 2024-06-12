@@ -32,19 +32,13 @@ async function syncAuthRecords(filepath: string, registeredUsers: Set<string>) {
   }
 }
 
-async function updateAuthFile(filepath: string, newUser: authValues,) {
+async function updateAuthFile(filepath: string, newUser: authValues) {
   const userLine: string = `${newUser.username}:${newUser.password}\n`;
   await fs.writeFile(filepath, userLine, { flag: "a" });
 }
 
 authRouter.post("/register", (req, res) => {
   const registerInfo: authValues = req.body;
-
-  console.log("received in /auth. user: " + registerInfo.username +
-    ". pass: " + registerInfo.password
-  );
-
-  console.log(req.body);
 
   // TODO: for now, write it to a file, 
   // but eventually we want to put password and 
@@ -61,7 +55,6 @@ authRouter.post("/register", (req, res) => {
   if (registeredUsers.has(registerInfo.username)) {
     result["registered"] = false;
     res.send(JSON.stringify(result));
-    console.log("already registered");
     return;
   }
 
@@ -78,14 +71,6 @@ authRouter.post("/signin", (req, res) => {
     sessionToken: ""
   };
 
-  console.log("registered user has username? " + 
-    registeredUsers.has(signInInfo.username)
-  );
-
-  console.log("registered user has matching password? " + 
-    usersToPassword.get(signInInfo.username) !== signInInfo.password
-  );
-
   if (!registeredUsers.has(signInInfo.username) ||
     usersToPassword.get(signInInfo.username) !== signInInfo.password) {
     res.send(JSON.stringify(signInResponse));
@@ -100,8 +85,6 @@ authRouter.post("/signin", (req, res) => {
   sessionTokensToTime.set(sessionToken, new Date());
 
   signInResponse.sessionToken = sessionToken;
-
-  console.log("session token: " + sessionToken);
 
   res.send(JSON.stringify(signInResponse));
 });

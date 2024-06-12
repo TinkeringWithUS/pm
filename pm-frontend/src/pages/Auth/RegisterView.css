@@ -1,6 +1,18 @@
-.register-container {
+.register-background {
     display: flex;
     justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+.register-container {
+    display: flex;
+    /* display: block; */
+    place-content: center;
+    width: 100%;
+    height: 100%;
+    /* justify-content: center; */
 }
 
 .auth-error {
@@ -8,7 +20,8 @@
 }
 
 .auth-form {
-    width: 40%;
+    width: 60%;
+    height: fit-content;
 }
 
 .auth-inputs {

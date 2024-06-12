@@ -13,9 +13,9 @@ const pageNameToRoutes: pageMapToRoute[] = [
     route: "/"
   },
   {
-    page: "Log In",
-    route: "/auth"
-  }
+    page: "Sign In",
+    route: "/signin"
+  } 
 ];
 
 function Header() {
@@ -29,6 +29,10 @@ function Header() {
           </li>
         );
       })}
+      {/* User Profile Picture when signed in */}
+      <li>
+
+      </li>
     </ul>
   );
 }

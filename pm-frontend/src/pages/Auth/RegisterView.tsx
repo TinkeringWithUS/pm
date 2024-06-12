@@ -1,9 +1,9 @@
 import { FormEvent, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { BACKEND_URL, authResponse, authValues } from "../../../../shared/networkInterface";
 
 import "./RegisterView.css";
-import { Link } from "react-router-dom";
 
 type formErrors = {
   username: boolean,
@@ -81,39 +81,42 @@ function RegisterView() {
     }
   }
 
+  // TODO: use an array map to simplify this code
   return (
-    <div className="register-container">
-      <form onSubmit={(event) => handleSubmit(event)}
-        className="auth-form">
-        <div className="auth-inputs">
-          <label htmlFor="auth-username">Username</label>
-          <input type="text" name="username" id="auth-username"
-            value={username} onChange={(e) => setUsername(e.target.value)} />
-          {
-            error && formErrors.username &&
-            <div className="auth-error">
-              Empty username
-            </div>
-          }
-        </div>
+    <div className="register-background">
+      <div className="register-container">
+        <form onSubmit={(event) => handleSubmit(event)}
+          className="auth-form">
+          <div className="auth-inputs">
+            <label htmlFor="auth-username">Username</label>
+            <input type="text" name="username" id="auth-username"
+              value={username} onChange={(e) => setUsername(e.target.value)} />
+            {
+              error && formErrors.username &&
+              <div className="auth-error">
+                Empty username
+              </div>
+            }
+          </div>
 
-        <div className="auth-inputs">
-          <label htmlFor="auth-password">Password</label>
-          <input type="password" name="password" id="auth-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)} />
-          {
-            error && formErrors.password &&
-            <div className="auth-error">
-              Empty Password
-            </div>
-          }
-        </div>
-        <button type="submit">Submit</button>
-      </form>
-      <Link to="/signin">
-        Sign In
-      </Link>
+          <div className="auth-inputs">
+            <label htmlFor="auth-password">Password</label>
+            <input type="password" name="password" id="auth-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)} />
+            {
+              error && formErrors.password &&
+              <div className="auth-error">
+                Empty Password
+              </div>
+            }
+          </div>
+          <button type="submit">Submit</button>
+        </form>
+        <Link to="/signin">
+          Sign In
+        </Link>
+      </div>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { Server } from "socket.io";
 import cors from "cors";
 
 import { authRouter } from "./AuthRoutes";
+import { docRouter } from "./DocRoutes";
 
 const app = express();
 const httpServer = createServer(app);
@@ -28,6 +29,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/", authRouter);
+app.use("/", docRouter);
 
 io.on("connection", (socket) => {
 
