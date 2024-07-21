@@ -1,2 +1,5 @@
-/backend/node_modules/*
-/pm-frontend/node_modules/*
+node_modules/*
+backend/node_modules/*
+deleted-code/*
+.pytest_cache/*
+.github/*

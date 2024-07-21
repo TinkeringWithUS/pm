@@ -1,9 +1,10 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useContext } from "react";
 import { Link } from "react-router-dom";
 
 import { BACKEND_URL, authResponse, authValues } from "../../../../shared/networkInterface";
 
 import "./RegisterView.css";
+import { AuthContextValues } from "../../contexts/AuthContext";
 
 type formErrors = {
   username: boolean,
@@ -19,9 +20,11 @@ function RegisterView() {
   });
 
   const [password, setPassword] = useState<string>("");
-  const [username, setUsername] = useState<string>("");
-  // const [showAlreadyRegistered, setShowAlreadyRegistered] = useState<boolean>(false);
+  // const [username, setUsername] = useState<string>("");
 
+  const { username, setLoggedIn, setUsername, setSessionToken } = useContext(AuthContextValues);
+
+  // const [showAlreadyRegistered, setShowAlreadyRegistered] = useState<boolean>(false);
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
 
     event.preventDefault();
@@ -71,9 +74,12 @@ function RegisterView() {
         .then(response => response.json())
         .then((data: authResponse) => {
           if(!data.registered) {
+            setLoggedIn(false);
             console.log("failed to register");
           } else {
             // setAlreadyRegistered(true);
+            setSessionToken(data.sessionToken);
+            setLoggedIn(true);
             console.log("fetched success");
           }
         })

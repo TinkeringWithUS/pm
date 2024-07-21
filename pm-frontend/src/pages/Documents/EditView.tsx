@@ -7,8 +7,7 @@ function EditView() {
 
   return (
     <TextEditor>
-
-
+      
     </TextEditor>
   );
 }

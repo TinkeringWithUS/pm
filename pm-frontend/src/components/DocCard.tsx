@@ -1,12 +1,21 @@
+import "./DocCard.css";
 
+type docCardProps = {
+  docName: string,
+  creationTime: string
+};
 
-function DocCard() {
-
+function DocCard({ docName, creationTime }: docCardProps) {
 
   return (
-    <div>
-      I doc
-    </div>
+    <>
+      <div className="doc-card">
+        {docName}
+      </div>
+      <div className="doc-card-hover">
+        {creationTime} 
+      </div>
+    </>
   );
 }
 

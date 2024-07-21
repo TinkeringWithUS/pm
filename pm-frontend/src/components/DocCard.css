@@ -1,0 +1,15 @@
+.doc-card {
+    visibility: visible;
+} 
+
+.doc-card:hover {
+    visibility: hidden;
+}
+
+.doc-card-hover {
+    visibility: hidden;
+}
+
+.doc-card-hover:hover {
+    visibility: visible;
+}

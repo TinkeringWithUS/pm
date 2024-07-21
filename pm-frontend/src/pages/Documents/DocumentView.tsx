@@ -1,3 +1,4 @@
+import { EditView } from "./EditView";
 
 function DocumentView() {
   // bad name, but page to display all documents 
@@ -5,9 +6,9 @@ function DocumentView() {
 
 
   return (
-    <div>
-      document view
-    </div>
+    <EditView>
+
+    </EditView>
   );
 }
 

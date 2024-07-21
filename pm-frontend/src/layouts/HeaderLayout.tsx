@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 
 import Header from "../components/Header";
 
-import "./Layout.css";
+import "./HeaderLayout.css";
 
 type LayoutProps = {
   children: ReactNode

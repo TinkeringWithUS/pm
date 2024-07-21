@@ -1,4 +1,7 @@
+import { chatRoom } from "../shared/networkInterface";
 import { RealTimeDoc } from "./RealTimeDoc";
+
+import { randomBytes } from "crypto";
 
 const NUM_MS_IN_SECOND = 1000;
 
@@ -15,49 +18,108 @@ const LOGIN_LIMIT_IN_SECONDS = 3600;
 
 const allDocuments: RealTimeDoc[] = [];
 
+const TOKEN_LENGTH = 20; 
+
+function generateSessionToken() {
+  return randomBytes(TOKEN_LENGTH).toString("hex");
+}
+
+type userJson = {
+  username: string,
+  password: string;
+  loginTime: Date;
+  activeSessionToken: string;
+  chatRoomNames: chatRoom[];
+};
+
 class User {
 
   private username: string;
   private password: string;
   private loginTime: Date; 
+  private activeSessionToken: string;
+
+  private chatRoomNames: chatRoom[];
 
   private ownedDocs: RealTimeDoc[] = [];
 
-  constructor(username: string, password: string) {
+  constructor(username: string, password: string, loginTime?: Date,
+    activeSessionToken?: string, chatRoomNames?: chatRoom[]) {
     this.username = username;
     this.password = password;
-    this.loginTime = new Date();
+
+    this.loginTime = loginTime ?? new Date();
+    this.activeSessionToken = activeSessionToken ?? "";
+    this.chatRoomNames = chatRoomNames ?? [];
   }
 
-  createDocument(name: string): void {
-    const newDoc = new RealTimeDoc(name);
-    allDocuments.push(newDoc);
-    this.ownedDocs.push(newDoc);
+  public registerUser() {
+    this.activeSessionToken = generateSessionToken();
+    return this.activeSessionToken;
   }
 
-  joinDocument(document: RealTimeDoc): boolean {
-    const docIndex = allDocuments.findIndex((doc) => {
-      RealTimeDoc.isEqual(doc, document)
-    });
+  // public createDocument(name: string): void {
+  //   const newDoc = new RealTimeDoc(name);
+  //   allDocuments.push(newDoc);
+  //   this.ownedDocs.push(newDoc);
+  // }
 
-    // document doesn't exist, or already joined
-    if(docIndex < 0 || !allDocuments[docIndex].addUser(this)) {
+  // public joinDocument(document: RealTimeDoc): boolean {
+  //   const docIndex = allDocuments.findIndex((doc) => {
+  //     RealTimeDoc.isEqual(doc, document)
+  //   });
+
+  //   // document doesn't exist, or already joined
+  //   if(docIndex < 0 || !allDocuments[docIndex].addUser(this)) {
+  //     return false;
+  //   }
+
+  //   allDocuments[docIndex].addUser(this);
+  //   return true;
+  // }
+
+  public isLoggedIn(sessionToken: string): boolean {
+    if(this.activeSessionToken !== sessionToken) {
       return false;
     }
-
-    allDocuments[docIndex].addUser(this);
-    return true;
-  }
-
-  isLoggedIn(): boolean {
     return Date.now() - this.loginTime.getTime()
       > secondsToMs(LOGIN_LIMIT_IN_SECONDS);
   }
 
-  static isEqual(user: User, otherUser: User) {
+  public signIn(password: string) {
+    if(this.password === password) {
+      this.activeSessionToken = generateSessionToken();
+      this.loginTime = new Date();
+      return this.activeSessionToken;
+    }
+    return "";
+  }
+
+  public joinChatRoom(room: chatRoom) {
+    this.chatRoomNames.push(room);
+  }
+
+  // TODO: replace
+  public getRooms() {
+    return this.chatRoomNames;
+  }
+
+  public static isEqual(user: User, otherUser: User) {
     return user.username == otherUser.username &&
       user.password == otherUser.password;
   }
+
+  public json() {
+    const jsonObject : userJson = {
+      username: this.username,
+      password: this.password,
+      loginTime: this.loginTime,
+      activeSessionToken: this.activeSessionToken,
+      chatRoomNames: this.chatRoomNames
+    };  
+
+    return jsonObject;
+  }
 };
 
-export { User };
+export { User, userJson };

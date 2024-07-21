@@ -7,6 +7,10 @@ import cors from "cors";
 import { authRouter } from "./AuthRoutes";
 import { docRouter } from "./DocRoutes";
 
+import { DOC_CONNECT_SIGNAL, MOVE_SIGNAL, mousePos } from "../shared/networkInterface";
+import { chatRouter } from "./ChatRoutes";
+import { registerChatHandlers } from "./ChatHandlers";
+
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -20,9 +24,13 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(json());
 
-app.listen(PORT, () => {
-  console.log(`Listening on http://localhost:${PORT}`);
+httpServer.listen(PORT, () => {
+  console.log(`http server listening on http://localhost:${PORT}`);
 });
+
+// app.listen(PORT, () => {
+//   console.log(`Listening on http://localhost:${PORT}`);
+// });
 
 app.get("/", (req, res) => {
   res.send("hi");
@@ -30,8 +38,30 @@ app.get("/", (req, res) => {
 
 app.use("/", authRouter);
 app.use("/", docRouter);
+app.use("/", chatRouter);
 
 io.on("connection", (socket) => {
+  // for now, everything will be localized to one 
+  // room, e.g. room 0 
+  // socket.on(DOC_CONNECT_SIGNAL, () => {
+  //   socket.join("room0");
+  // });
 
+  // plan for consistency 
+  // LWW, last writer wins
+  // https://jakelazaroff.com/words/an-interactive-intro-to-crdts/
+  // can't use actual physical timestamps, must
+  // use either lamport clocks, or, because we're
+  // using a central server, just a counter
+
+  // server broadcasts messages to clients in 
+  // the same document room, everyone else 
+  // should see this current user's cursor 
+  // move to mouseInfo
+  // socket.on(MOVE_SIGNAL, (mouseInfo: mousePos) => {
+  //   socket.to("room0").emit("", mouseInfo);
+  // });
+
+  registerChatHandlers(socket);
 });
 

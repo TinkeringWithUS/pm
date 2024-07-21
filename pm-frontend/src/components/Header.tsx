@@ -7,6 +7,7 @@ type pageMapToRoute = {
   route: string
 }
 
+// TODO: move pageNameToRoutes over to App.tsx
 const pageNameToRoutes: pageMapToRoute[] = [
   {
     page: "Home",
@@ -15,7 +16,15 @@ const pageNameToRoutes: pageMapToRoute[] = [
   {
     page: "Sign In",
     route: "/signin"
-  } 
+  }, 
+  {
+    page: "Text Editor", 
+    route: "/doc"
+  }, 
+  {
+    page: "Chat", 
+    route: "/chat"
+  }
 ];
 
 function Header() {
@@ -31,7 +40,7 @@ function Header() {
       })}
       {/* User Profile Picture when signed in */}
       <li>
-
+        Profile Pic
       </li>
     </ul>
   );

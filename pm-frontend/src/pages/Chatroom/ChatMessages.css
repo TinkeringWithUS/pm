@@ -1,0 +1,12 @@
+.chatroom-messages {
+    list-style-type: none;
+
+    display: flex; 
+    flex-direction: column;
+
+}
+
+.user-message {
+    display: flex;
+    justify-content: space-evenly;
+}

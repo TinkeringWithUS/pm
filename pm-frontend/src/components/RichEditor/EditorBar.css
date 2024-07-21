@@ -1,0 +1,17 @@
+.text-edit-options {
+    list-style: none;
+    /* display: flex; */
+
+}
+
+.active-option {
+    background-color: black; 
+    color: white;
+}
+
+.inactive-option:hover {
+    background-color: white; 
+    color: black;
+    border-color: black;
+}
+

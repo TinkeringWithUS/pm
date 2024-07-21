@@ -1,8 +1,10 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useContext } from "react";
 
-import { BACKEND_URL, authValues, signInResponse } from "../../../../shared/networkInterface";
+import { BACKEND_URL, authResponse, authValues } from "../../../../shared/networkInterface";
 
 import { Link } from "react-router-dom";
+
+import { AuthContextValues } from "../../contexts/AuthContext";
 
 type formErrors = {
   username: boolean,
@@ -18,8 +20,10 @@ function SignInView() {
   });
 
   const [password, setPassword] = useState<string>("");
-  const [username, setUsername] = useState<string>("");
+  // const [username, setUsername] = useState<string>("");
   // const [showAlreadyRegistered, setShowAlreadyRegistered] = useState<boolean>(false);
+
+  const { username, setLoggedIn, setUsername, setSessionToken } = useContext(AuthContextValues);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
 
@@ -68,13 +72,17 @@ function SignInView() {
         }
       })
         .then(response => response.json())
-        .then((data: signInResponse) => {
+        .then((data: authResponse) => {
           // session token is empty string
-          if(!data.sessionToken) {
+          if(!data.registered) {
+            setLoggedIn(false);
             console.log("failed to sign in");
           } else {
             // setAlreadyRegistered(true);
-            console.log("fetched success");
+            setSessionToken(data.sessionToken);
+            setLoggedIn(true);
+
+            console.log("successful sign in");
           }
         })
         .catch();
