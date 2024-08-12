@@ -1,0 +1,49 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DIRECT_URL")
+}
+
+model User {
+  id      Int      @id @default(autoincrement())
+  username    String @unique
+  passwordHash String @unique
+  salt String @unique
+  profilePictureFileName String @default("")
+  activeSessionToken String? 
+  loginTime String?
+}
+
+model ChatRoom {
+  id Int @id @default(autoincrement()) 
+  name String 
+}
+
+// map messages to room id with user id
+// users can join / leave rooms, create a table 
+// record = (room id user has joined, user id)
+// if user joins a new room, add a record to this table, 
+// if user leaves a room, delete record
+model UserJoinedRooms {
+  userId Int @unique // userId and joinedRoomId are both primary keys, must be unique
+  joinedRoomId Int @unique // room that userId has joined 
+  @@id(name: "userJoinedRoomId", [userId, joinedRoomId]) 
+}
+
+model ChatMessages {
+  id Int @id @default(autoincrement())
+  userId Int
+  username String
+  roomId Int // foreign key to ChatRoom table, same as socketio room id
+  roomname String
+  body String
+}

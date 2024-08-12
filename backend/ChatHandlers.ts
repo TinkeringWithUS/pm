@@ -1,13 +1,15 @@
 import { Socket } from "socket.io";
 import { usernamesToUsers } from "./AuthRoutes";
 import { CHAT_CREATE_SIGNAL, CHAT_GET_MESSAGE_SIGNAL, CHAT_SEND_MESSAGE_SIGNAL, chatCreateMessage, chatMessage, ERROR_SIGNAL, getChatMessages } from "../shared/networkInterface";
-import { ChatRoomModel } from "./ChatRoom";
+import { ChatRoomController } from "./ChatRoomController";
+import { PrismaClient } from "@prisma/client";
 
-const chatRoomModel = new ChatRoomModel();
+const prisma = new PrismaClient(); 
+const chatRoomController = new ChatRoomController(prisma);
+chatRoomController.loadFromDatabase();
 
 // TODO: Do authentication for chats
 function handleCreateRoom(createData: chatCreateMessage, socket: Socket) {
-
   const user = usernamesToUsers.get(createData.username);
 
   console.log("handle create room. room name: " + createData.roomname);
@@ -22,28 +24,36 @@ function handleCreateRoom(createData: chatCreateMessage, socket: Socket) {
     return chatRoom.name === createData.roomname;
   });
 
+  // trying to create a room that already exists
   if (chatRoomIndex > -1) {
     const chatRoom = user.getRooms().at(chatRoomIndex);
 
-
   } else {
-    chatRoomModel.createRoom(createData.roomname);
+    chatRoomController.createRoom(createData.roomname)
+    .then((newRoom) => {
+      if(newRoom) {
+        // TODO: Error handling for when !user
+        const user = usernamesToUsers.get(createData.username);
+        user?.joinChatRoom(newRoom.id, prisma);
 
-    const user = usernamesToUsers.get(createData.username);
-    user?.joinChatRoom({ name: createData.roomname });
-
-    chatRoomModel.joinRoom(socket, createData.roomname);
+        chatRoomController.joinRoom(socket, createData.roomname, createData.username);
+      }
+    });
   }
 }
 
 function handleGetMessages(roomName: string, socket: Socket, numMessages?: number) {
   console.log("handle get messsages called. room name: " + roomName + ".");
-  chatRoomModel.getMessages(roomName, socket, numMessages);
+  chatRoomController.getMessages(roomName, socket, numMessages);
 }
 
+// not possible to send a message without 
+// TODO: add checks to ensure user has permissions to be typing in this
+// chat room
 function handleChatSendMessage(chatInfo: chatMessage, socket: Socket) {
   console.log("handle send messsages called. room name: " + chatInfo.roomName + ".");
-  chatRoomModel.sendMessage(chatInfo.roomName, chatInfo.body, chatInfo.username, socket);
+  chatRoomController.joinRoom(socket, chatInfo.roomName, chatInfo.username);
+  chatRoomController.sendMessage(chatInfo.roomName, chatInfo.body, chatInfo.username, socket);
 }
 
 
@@ -64,4 +74,4 @@ function registerChatHandlers(socket: Socket) {
   socket.on(CHAT_GET_MESSAGE_SIGNAL, (roomName: string, numMessages?: number) => { handleGetMessages(roomName, socket, numMessages) })
 }
 
-export { registerChatHandlers, chatRoomModel };
+export { registerChatHandlers, chatRoomController };

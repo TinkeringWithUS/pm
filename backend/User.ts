@@ -1,7 +1,10 @@
+import { PrismaClient } from "@prisma/client";
 import { chatRoom } from "../shared/networkInterface";
 import { RealTimeDoc } from "./RealTimeDoc";
 
-import { randomBytes } from "crypto";
+import { privateDecrypt, randomBytes } from "crypto";
+import { compareSync, genSaltSync, hashSync } from "bcrypt";
+import { couldStartTrivia } from "typescript";
 
 const NUM_MS_IN_SECOND = 1000;
 
@@ -18,108 +21,295 @@ const LOGIN_LIMIT_IN_SECONDS = 3600;
 
 const allDocuments: RealTimeDoc[] = [];
 
-const TOKEN_LENGTH = 20; 
+const TOKEN_LENGTH = 20;
 
 function generateSessionToken() {
   return randomBytes(TOKEN_LENGTH).toString("hex");
 }
 
-type userJson = {
+type userRecord = {
+  id?: number,
   username: string,
-  password: string;
-  loginTime: Date;
-  activeSessionToken: string;
-  chatRoomNames: chatRoom[];
+  passwordHash: string,
+  salt: string
+  profilePictureFileName: string,
+  activeSessionToken: string,
+  loginTime: string,
 };
 
+const saltRounds = 12;
+
 class User {
-
   private username: string;
-  private password: string;
-  private loginTime: Date; 
-  private activeSessionToken: string;
+  private passwordHash: string = "";
+  private salt: string = "";
+  private loginTime: Date;
+  private activeSessionToken: string | null;
 
-  private chatRoomNames: chatRoom[];
+  private chatRooms: chatRoom[];
 
-  private ownedDocs: RealTimeDoc[] = [];
-
-  constructor(username: string, password: string, loginTime?: Date,
-    activeSessionToken?: string, chatRoomNames?: chatRoom[]) {
+  constructor(username: string, password?: string, passwordHash?: string, loginTime?: Date,
+    activeSessionToken?: string, chatRooms?: chatRoom[]) {
     this.username = username;
-    this.password = password;
 
     this.loginTime = loginTime ?? new Date();
-    this.activeSessionToken = activeSessionToken ?? "";
-    this.chatRoomNames = chatRoomNames ?? [];
+    this.activeSessionToken = activeSessionToken ?? null;
+    this.chatRooms = chatRooms ?? [];
+
+    this.salt = genSaltSync(saltRounds);
+    if(password) {
+      this.passwordHash = hashSync(password, this.salt);
+    } else if (passwordHash) {
+      this.passwordHash = passwordHash;
+    }
+
+    console.log("constructor, password: " + this.passwordHash);
   }
 
-  public registerUser() {
+  public async registerUser(dbClient: PrismaClient) {
     this.activeSessionToken = generateSessionToken();
+
+    await dbClient.user.update({
+      where: {
+        username: this.username
+      },
+      data: {
+        activeSessionToken: this.activeSessionToken
+      }
+    });
+
     return this.activeSessionToken;
   }
 
-  // public createDocument(name: string): void {
-  //   const newDoc = new RealTimeDoc(name);
-  //   allDocuments.push(newDoc);
-  //   this.ownedDocs.push(newDoc);
-  // }
-
-  // public joinDocument(document: RealTimeDoc): boolean {
-  //   const docIndex = allDocuments.findIndex((doc) => {
-  //     RealTimeDoc.isEqual(doc, document)
-  //   });
-
-  //   // document doesn't exist, or already joined
-  //   if(docIndex < 0 || !allDocuments[docIndex].addUser(this)) {
-  //     return false;
-  //   }
-
-  //   allDocuments[docIndex].addUser(this);
-  //   return true;
-  // }
-
   public isLoggedIn(sessionToken: string): boolean {
-    if(this.activeSessionToken !== sessionToken) {
+    if (this.activeSessionToken && this.activeSessionToken !== sessionToken || !this.loginTime) {
       return false;
     }
-    return Date.now() - this.loginTime.getTime()
-      > secondsToMs(LOGIN_LIMIT_IN_SECONDS);
+
+    // FIXME: Refresh the date when successfully logged in
+
+    return (Date.now() - new Date(this.loginTime).getTime()) > secondsToMs(LOGIN_LIMIT_IN_SECONDS);
   }
 
-  public signIn(password: string) {
-    if(this.password === password) {
+  public async signIn(password: string, dbClient: PrismaClient) {
+    const signInHash = hashSync(password, this.salt);
+    const isSameHash = compareSync(password, this.passwordHash);
+
+    // console.log("in user.signin, this passwordHash: " + this.passwordHash + ". signinHash: " + signInHash);
+    console.log("signin hash: " + signInHash);
+    console.log("this hash: " + this.passwordHash);
+    console.log("passed in password: " + password);
+    console.log("this.username: " + this.username + ". this password hash: " + this.passwordHash);
+    console.log("is same hash: " + isSameHash);
+    if(compareSync(password, this.passwordHash)) {
+    // if (this.passwordHash === signInHash) {
       this.activeSessionToken = generateSessionToken();
       this.loginTime = new Date();
+
+      await dbClient.user.update({
+        where: {
+          username: this.username
+        },
+        data: {
+          loginTime: this.loginTime.toISOString()
+        }
+      });
+
       return this.activeSessionToken;
     }
     return "";
   }
 
-  public joinChatRoom(room: chatRoom) {
-    this.chatRoomNames.push(room);
+  public async joinChatRoom(roomId: number, dbClient: PrismaClient) {
+
+    const user = await dbClient.user.findFirst({
+      where: {
+        username: this.username
+      }
+    });
+
+    // Try to find if this chat room even exists, if not, return false
+    const chatRoom = await dbClient.chatRoom.findFirst({
+      where: {
+        id: roomId
+      }
+    });
+
+    if(!chatRoom || !user) {
+      console.error("Can't find Either this current user or chat room in database");
+      return false;
+    }
+
+    // TODO: add error handling here if the update fails
+    const userJoinedRoomRecord = await dbClient.userJoinedRooms.upsert({
+      where: {
+        userJoinedRoomId: {
+          userId: user.id,
+          joinedRoomId: roomId
+        }
+      }, 
+      create: {
+        userId: user.id,
+        joinedRoomId: roomId
+      }, 
+      update: { }
+    });
+
+    if(!userJoinedRoomRecord) {
+      return false;
+    }
+
+    const joinedRoom: chatRoom = {
+      id: roomId,
+      name: chatRoom.name
+    };
+
+    this.chatRooms.push(joinedRoom);
+    return true;
   }
 
   // TODO: replace
   public getRooms() {
-    return this.chatRoomNames;
+    return this.chatRooms;
   }
 
   public static isEqual(user: User, otherUser: User) {
     return user.username == otherUser.username &&
-      user.password == otherUser.password;
+      user.passwordHash == otherUser.passwordHash;
   }
 
-  public json() {
-    const jsonObject : userJson = {
+  public getRecord() {
+    const dbRecord: userRecord = {
       username: this.username,
-      password: this.password,
-      loginTime: this.loginTime,
-      activeSessionToken: this.activeSessionToken,
-      chatRoomNames: this.chatRoomNames
-    };  
+      salt: this.salt,
+      passwordHash: this.passwordHash, // redo
+      loginTime: this.loginTime.toString(),
+      activeSessionToken: this.activeSessionToken ?? "",
+      profilePictureFileName: "",
+    };
 
-    return jsonObject;
+    return dbRecord;
   }
 };
 
-export { User, userJson };
+// Returns null if user failed to load, else return new user 
+async function loadUser(dbClient: PrismaClient, username: string) {
+  const user = await dbClient.user.findFirst({
+    where: {
+      username: username
+    }
+  });
+
+  if (!user) {
+    return null;
+  }
+
+  // go through userJoinedRooms table record = (userId, joinedRoomId)
+  // and grab all joinedRoomIds for the User to initialization it 
+  // for the in memory structure
+  const userToJoinedRooms = await dbClient.userJoinedRooms.findMany({
+    where: {
+      userId: user.id
+    }
+  });
+
+  const loginDate = user.loginTime ? new Date(user.loginTime) : undefined;
+  const sessionToken = user.activeSessionToken ? user.activeSessionToken : undefined;
+
+  if (userToJoinedRooms) {
+    const joinedRooms: chatRoom[] = [];
+
+    for (const userToJoinedRoom of userToJoinedRooms) {
+      const chatRoomRecord = await dbClient.chatRoom.findFirst({
+        where: {
+          id: userToJoinedRoom.joinedRoomId
+        }
+      });
+
+      // TODO: Rewrite everything to support ids with chatrooms
+      if (chatRoomRecord) {
+        const joinedChatRoom: chatRoom = {
+          id: userToJoinedRoom.joinedRoomId,
+          name: chatRoomRecord.name
+        };
+
+        joinedRooms.push(joinedChatRoom);
+      }
+    }
+
+    // FIXME: too many confusing and overlapping variable names
+    const joinedChatRooms: chatRoom[] = joinedRooms.map((joinedChatRoom) => {
+      const chatRoom: chatRoom = {
+        name: joinedChatRoom.name,
+        id: joinedChatRoom.id,
+      };
+      return chatRoom;
+    });
+
+    // FIXME: passing in password hash, but constructor is hashing the password
+    // so double hashing is stopping verification
+    // TODO: move to UserController
+    return new User(user.username, undefined, user.passwordHash, loginDate, sessionToken, joinedChatRooms);
+  } else {
+    return new User(user.username, user.passwordHash, undefined, loginDate, sessionToken);
+  }
+}
+
+async function loadAllUsers(dbClient: PrismaClient) {
+  const userRecord = await dbClient.user.findMany();
+
+  const usernamesToUser = new Map<string, User>();
+
+  console.log("load all users");
+  console.log(JSON.stringify(userRecord));
+
+  for (const record of userRecord) {
+    const user = await loadUser(dbClient, record.username);
+
+    if (user) {
+      usernamesToUser.set(record.username, user);
+    }
+  }
+
+  console.log("usernames to users. usernames");
+  console.log(usernamesToUser.keys());
+
+  return usernamesToUser;
+}
+
+// Returns null if user already exists, otherwise returns newly created user.
+async function createUniqueUser(username: string, password: string,
+  dbClient: PrismaClient, loginTime?: Date, activeSessionToken?: string,
+  chatRooms?: chatRoom[]) {
+  // perform checks that 1. user doesn't already exists 
+  // 2. create user if they don't exist 
+  const user = await dbClient.user.findFirst({
+    where: {
+      username: username
+    }
+  });
+
+  if (user) {
+    return null;
+  }
+
+  const newUser = new User(username, password, undefined, loginTime, activeSessionToken, chatRooms);
+  const userRecord = newUser.getRecord();
+
+  await dbClient.user.create({
+    data: {
+      username: userRecord.username,
+      passwordHash: userRecord.passwordHash,
+      salt: userRecord.salt,
+      profilePictureFileName: userRecord.profilePictureFileName,
+      activeSessionToken: userRecord.activeSessionToken,
+      loginTime: userRecord.loginTime,
+    }
+  });
+
+  return newUser;
+}
+
+
+
+export { User, loadAllUsers, createUniqueUser };

@@ -10,92 +10,93 @@ import {
   loginResponse
 } from "../shared/networkInterface";
 
-import { User, userJson } from "./User";
+import { createUniqueUser, loadAllUsers, User } from "./User";
+import { PrismaClient } from "@prisma/client";
 
 const authRouter = Router();
 
-type usersFileStorage = {
-  users: userJson[]
-};
+// type usersFileStorage = {
+//   users: userJson[]
+// };
 
 
-const usernamesToUsers = new Map<string, User>();
-const registeredUsernames = new Set<string>();
-const usernamesToPassword = new Map<string, string>();
+let usernamesToUsers = new Map<string, User>();
+// const registeredUsernames = new Set<string>();
+// const usernamesToPassword = new Map<string, string>();
 
-const fileUsersJson: usersFileStorage = {
-  users: []
-};
+// const fileUsersJson: usersFileStorage = {
+//   users: []
+// };
 
-const usernameToIndex = new Map<string, number>();
+// const usernameToIndex = new Map<string, number>();
 
-async function loadUserRecords(filepath: string) {
-  const data = await fs.readFile(filepath, "utf-8").catch(() => { return null; });
+// async function loadUserRecords(filepath: string) {
+//   const data = await fs.readFile(filepath, "utf-8").catch(() => { return null; });
 
-  if (!data) {
-    return;
-  }
+//   if (!data) {
+//     return;
+//   }
 
-  const userRecords: usersFileStorage = JSON.parse(data);
+//   const userRecords: usersFileStorage = JSON.parse(data);
 
-  // TODO: take all the user info and meta info from disk and update 
-  // memory structures with it
-  const records = userRecords.users;
+//   // TODO: take all the user info and meta info from disk and update 
+//   // memory structures with it
+//   const records = userRecords.users;
 
-  for (let userJsonIndex = 0; userJsonIndex < records.length; userJsonIndex++) {
-    const userJson = records[userJsonIndex];
+//   for (let userJsonIndex = 0; userJsonIndex < records.length; userJsonIndex++) {
+//     const userJson = records[userJsonIndex];
 
-    const newUser = new User(userJson.username, userJson.password,
-      userJson.loginTime, userJson.activeSessionToken, userJson.chatRoomNames);
+//     const newUser = new User(userJson.username, userJson.password,
+//       userJson.loginTime, userJson.activeSessionToken, userJson.chatRoomNames);
 
-    registeredUsernames.add(userJson.username);
+//     registeredUsernames.add(userJson.username);
 
-    usernamesToUsers.set(userJson.username, newUser);
-    usernamesToPassword.set(userJson.username, userJson.password);
-    usernameToIndex.set(userJson.username, userJsonIndex);
+//     usernamesToUsers.set(userJson.username, newUser);
+//     usernamesToPassword.set(userJson.username, userJson.password);
+//     usernameToIndex.set(userJson.username, userJsonIndex);
 
-  }
+//   }
 
-  console.log("after load user records. usernameToIndex");
-  console.log([...usernameToIndex.entries()])
+//   console.log("after load user records. usernameToIndex");
+//   console.log([...usernameToIndex.entries()])
 
-  fileUsersJson.users = records;
-}
+//   fileUsersJson.users = records;
+// }
 
 // TODO: Investigate a data structure that doesn't shift values when 
 // values are removed, instead, append. when certain threshold hit, 
 // should do a compact (amortizing removal) (will be an array with holes
 // use hashmap to track these holes)
-async function updateUserFile(filepath: string, userToUpdate: User, username: string) {
+// async function updateUserFile(filepath: string, userToUpdate: User, username: string) {
 
-  console.log("in update user file");
+//   console.log("in update user file");
 
-  const userJson = userToUpdate.json();
+//   const userJson = userToUpdate.json();
 
-  let userIndex = usernameToIndex.get(username);
+//   let userIndex = usernameToIndex.get(username);
 
-  if (userIndex) {
-    // update   
-    fileUsersJson.users[userIndex] = userJson;
-  } else {
-    // add new user 
-    const currentNumUsers = fileUsersJson.users.length;
-    fileUsersJson.users.push(userJson);
-    usernameToIndex.set(username, currentNumUsers);
-  }
+//   if (userIndex) {
+//     // update   
+//     fileUsersJson.users[userIndex] = userJson;
+//   } else {
+//     // add new user 
+//     const currentNumUsers = fileUsersJson.users.length;
+//     fileUsersJson.users.push(userJson);
+//     usernameToIndex.set(username, currentNumUsers);
+//   }
 
-  console.log("update user file.");
-  console.log(JSON.stringify(fileUsersJson));
+//   console.log("update user file.");
+//   console.log(JSON.stringify(fileUsersJson));
 
-  let writeFlag = "w";
+//   let writeFlag = "w";
 
-  // file doesn't exist, create it 
-  if (!fs.stat(filepath)) {
-    writeFlag = "w+";
-  }
+//   // file doesn't exist, create it 
+//   if (!fs.stat(filepath)) {
+//     writeFlag = "w+";
+//   }
 
-  await fs.writeFile(filepath, JSON.stringify(fileUsersJson, null, "\t"), { flag: writeFlag });
-}
+//   await fs.writeFile(filepath, JSON.stringify(fileUsersJson, null, "\t"), { flag: writeFlag });
+// }
 
 // const sessionTokensToTime = new Map<string, Date>();
 
@@ -104,41 +105,51 @@ const PASSWORD_FILE = "./password.txt";
 
 // TODO: make sure to write down the user info (e.g. rooms, active session token)
 // TODO: rename to something else lol
-loadUserRecords(USER_FILE);
-loadAuthRecords(PASSWORD_FILE, registeredUsernames);
+// loadUserRecords(USER_FILE);
+// loadAuthRecords(PASSWORD_FILE, registeredUsernames);
 
-async function loadAuthRecords(filepath: string, registeredUsers: Set<string>) {
+// async function loadAuthRecords(filepath: string, registeredUsers: Set<string>) {
 
-  const data = await fs.readFile(filepath).catch(() => { return null; });
+//   const data = await fs.readFile(filepath).catch(() => { return null; });
 
-  if (!data) {
-    return;
-  }
+//   if (!data) {
+//     return;
+//   }
 
-  const dataString = data.toString();
-  const namePasswordPairs = dataString.split("\n");
+//   const dataString = data.toString();
+//   const namePasswordPairs = dataString.split("\n");
 
-  // format is username:password
-  for (const pair of namePasswordPairs) {
-    const namePassPair = pair.split(":")
+//   // format is username:password
+//   for (const pair of namePasswordPairs) {
+//     const namePassPair = pair.split(":")
 
-    const username = namePassPair[0];
-    const password = namePassPair[1];
+//     const username = namePassPair[0];
+//     const password = namePassPair[1];
 
-    registeredUsers.add(username);
-    usernamesToPassword.set(username, password);
+//     registeredUsers.add(username);
+//     usernamesToPassword.set(username, password);
 
-    const user = new User(username, password);
+//     const user = new User(username, password);
 
-    registeredUsernames.add(username);
-    usernamesToUsers.set(username, user);
-  }
-}
+//     registeredUsernames.add(username);
+//     usernamesToUsers.set(username, user);
+//   }
+// }
 
-async function updateAuthFile(filepath: string, newUser: authValues) {
-  const userLine: string = `${newUser.username}:${newUser.password}\n`;
-  await fs.writeFile(filepath, userLine, { flag: "a" });
-}
+const prisma = new PrismaClient();
+
+loadAllUsers(prisma)
+  .then((namesToUser) => {
+    usernamesToUsers = namesToUser;
+  })
+  .catch(() => {
+    console.log("Failure, cannot load users from database.");
+  });
+
+// async function updateAuthFile(filepath: string, newUser: authValues) {
+//   const userLine: string = `${newUser.username}:${newUser.password}\n`;
+//   await fs.writeFile(filepath, userLine, { flag: "a" });
+// }
 
 authRouter.post("/register", (req, res) => {
   const registerInfo: authValues = req.body;
@@ -156,24 +167,39 @@ authRouter.post("/register", (req, res) => {
     sessionToken: "",
   };
 
-  if (registeredUsernames.has(registerInfo.username)) {
-    res.send(JSON.stringify(result));
-    return;
-  }
+  // if (registeredUsernames.has(registerInfo.username)) {
+  //   res.send(JSON.stringify(result));
+  //   return;
+  // }
 
-  updateAuthFile(PASSWORD_FILE, registerInfo);
+  createUniqueUser(registerInfo.username, registerInfo.password, prisma)
+    .then((user) => {
+      if(!user) {
+        return;
+      } else {
+        usernamesToUsers.set(registerInfo.username, user);
+        return user.registerUser(prisma);
+      }
+    })
+    .then((sessionToken) => {
+      if(!sessionToken) {
+        res.send(JSON.stringify(result));
+      } else {
+        result.sessionToken = sessionToken;
+        result.registered = true;
+        res.send(JSON.stringify(result));
+      }
+    });
 
-  const user = new User(registerInfo.username, registerInfo.password);
+  // const user = new User(registerInfo.username, registerInfo.password);
 
-  updateUserFile(USER_FILE, user, registerInfo.username);
+  // registeredUsernames.add(registerInfo.username);
+  // usernamesToUsers.set(registerInfo.username, user);
 
-  registeredUsernames.add(registerInfo.username);
-  usernamesToUsers.set(registerInfo.username, user);
+  // result.sessionToken = user.registerUser();
+  // result.registered = true;
 
-  result.sessionToken = user.registerUser();
-  result.registered = true;
-
-  res.send(JSON.stringify(result));
+  // res.send(JSON.stringify(result));
 });
 
 authRouter.post("/signin", (req, res) => {
@@ -184,22 +210,38 @@ authRouter.post("/signin", (req, res) => {
     sessionToken: ""
   };
 
+  console.log("/signin. usernames: " + [ ...usernamesToUsers.keys() ]);
+
   const user = usernamesToUsers.get(signInInfo.username);
 
-  if (!user || user.signIn(signInInfo.password) === "") {
+  if(!user) {
+    console.log("/signin, no user: ");
     res.send(JSON.stringify(signInResponse));
     return;
   }
 
-  signInResponse.sessionToken = user.signIn(signInInfo.password);
-  signInResponse.registered = true;
+  // if (!user || user.signIn(signInInfo.password) === "") {
+  //   res.send(JSON.stringify(signInResponse));
+  //   return;
+  // }
 
-  updateUserFile(USER_FILE, user, signInInfo.username);
+  user.signIn(signInInfo.password, prisma)
+    .then((activeSessionToken) => {
+      if (activeSessionToken) {
+        console.log("successful sign in");
+        signInResponse.sessionToken = activeSessionToken;
+        signInResponse.registered = true;
+      }
+    })
+    .finally(() => {
+      console.log("in finally clause");
+      res.send(JSON.stringify(signInResponse));
+    });
 
-  res.send(JSON.stringify(signInResponse));
+  // updateUserFile(USER_FILE, user, signInInfo.username);
 });
 
-authRouter.post("/login", (req, res) => {
+authRouter.post("/login", async (req, res) => {
 
   const loginInfo: loginInfo = req.body;
 
@@ -209,7 +251,8 @@ authRouter.post("/login", (req, res) => {
   const user = usernamesToUsers.get(loginInfo.username);
 
   const loginResponse: loginResponse = {
-    loggedIn: false
+    loggedIn: false,
+    profilePicture: null,
   };
 
   console.log("/login. username: " + loginInfo.username + ".");
@@ -218,9 +261,26 @@ authRouter.post("/login", (req, res) => {
 
   if (user) {
     console.log("has user");
+    // TODO: if not logged in, return false login response
     user.isLoggedIn(loginInfo.sessionToken);
     loginResponse.loggedIn = true;
+
+    const files = await fs.readdir("./profile_pictures");
+
+    for(const file of files) {
+      if(file.includes(loginInfo.username)) {
+        const imgPath = "./profile_pictures/" + file;
+        console.log("img path: " + imgPath);
+        const profilePictureBuffer = await fs.readFile(imgPath);
+        loginResponse.profilePicture = new Blob([profilePictureBuffer]);
+        break;
+      }
+    }
   }
+
+  console.log("login response pfp: " + loginResponse.profilePicture);
+
+  console.log(JSON.stringify(loginResponse));
 
   res.send(JSON.stringify(loginResponse));
 });

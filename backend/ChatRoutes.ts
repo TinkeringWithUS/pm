@@ -1,11 +1,10 @@
 import { Router } from "express";
-import { chatCreateRoomRequest, chatCreateRoomResponse, chatJoinRequest, chatJoinResponse, chatJoinRoomRequest, chatRoom } from "../shared/networkInterface";
+import { chatCreateRoomRequest, chatCreateRoomResponse, chatJoinRequest, chatJoinResponse, chatJoinRoomRequest, chatJoinRoomResponse, chatRoom } from "../shared/networkInterface";
 import { usernamesToUsers } from "./AuthRoutes";
-import { chatRoomModel } from "./ChatHandlers";
+import { chatRoomController } from "./ChatHandlers";
+import { PrismaClient } from "@prisma/client";
 
 const chatRoomNames = new Set<string>();
-
-let newRoomId = 0;
 
 const chatRouter = Router();
 
@@ -19,6 +18,8 @@ const chatRouter = Router();
  * with chat message signal (use)
  * 
  */
+
+const prisma = new PrismaClient();
 
 // TODO: handle authentication later on (write express middleware?)
 chatRouter.post("/chat", (req, res) => {
@@ -39,14 +40,14 @@ chatRouter.post("/chat", (req, res) => {
   res.send(JSON.stringify(chatResponse));
 });
 
-chatRouter.post("/chat/join", (req, res) => {
+chatRouter.post("/chat/join", async (req, res) => {
   const joinRequest: chatJoinRoomRequest = req.body;
 
   const user = usernamesToUsers.get(joinRequest.username);
   const roomName = joinRequest.roomToJoin;
 
-  const joinResponse: chatJoinResponse = {
-    rooms: [],
+  const joinResponse: chatJoinRoomResponse = {
+    roomsJoined: [],
   };
 
   console.log("user name: " + joinRequest.username);
@@ -57,35 +58,39 @@ chatRouter.post("/chat/join", (req, res) => {
   }
 
   console.log("join request username: " + joinRequest.username);
+  console.log("join request roomToJoinId: " + joinRequest.roomToJoinId);
+  console.log("join request roomToJoin: " + joinRequest.roomToJoin);
 
   // if there's a valid user, send back available chat rooms no matter what
   // if there's not a valid user, send back empty
   if (user) {
     if (chatRoomNames.has(roomName)) {
-      const chatRoom: chatRoom = {
-        name: roomName,
-      };
-      user.joinChatRoom(chatRoom);
-      console.log("/chat/join. chat room name: " + chatRoom.name);
+      user.joinChatRoom(joinRequest.roomToJoinId, prisma);
+
+      console.log("/chat/join. chat room name: " + roomName);
       console.log("/chat/join should have a room for this user");
     }
-    joinResponse.rooms = user.getRooms();
+    joinResponse.roomsJoined = user.getRooms();
   }
 
   res.send(JSON.stringify(joinResponse));
 });
 
-chatRouter.post("/chat/create", (req, res) => {
+chatRouter.post("/chat/create", async (req, res) => {
   const createRequest: chatCreateRoomRequest = req.body;
 
   const createResponse: chatCreateRoomResponse = {
     created: false
   };
 
-  if(chatRoomModel.createRoom(createRequest.roomName)) {
+  const newRoom = await chatRoomController.createRoom(createRequest.roomName);
+
+  if(newRoom) {
     createResponse.created = true;
     chatRoomNames.add(createRequest.roomName);
+
     console.log("/chat/create. create room name: " + createRequest.roomName);
+
     for(const roomNames of chatRoomNames) {
       console.log("room name: " + roomNames);
     }

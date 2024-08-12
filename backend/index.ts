@@ -10,6 +10,8 @@ import { docRouter } from "./DocRoutes";
 import { DOC_CONNECT_SIGNAL, MOVE_SIGNAL, mousePos } from "../shared/networkInterface";
 import { chatRouter } from "./ChatRoutes";
 import { registerChatHandlers } from "./ChatHandlers";
+import { config } from "dotenv";
+import { profileRouter } from "./ProfileRoutes";
 
 const app = express();
 const httpServer = createServer(app);
@@ -20,6 +22,19 @@ const io = new Server(httpServer, {
 });
 
 const PORT = process.env.PORT || 3000;
+
+// should read the db.env file
+try {
+  config({ path: "./db.env" });
+} catch {
+  console.log("No env file for database connection.");
+}
+
+// console.log("db url: " + process.env.DB_URL);
+// console.log("db key: " + process.env.DB_KEY);
+
+// I want to practice sql, so use prisma orm to create and update
+// but use sql for querying
 
 app.use(cors());
 app.use(json());
@@ -39,6 +54,7 @@ app.get("/", (req, res) => {
 app.use("/", authRouter);
 app.use("/", docRouter);
 app.use("/", chatRouter);
+app.use("/", profileRouter);
 
 io.on("connection", (socket) => {
   // for now, everything will be localized to one 
@@ -64,4 +80,3 @@ io.on("connection", (socket) => {
 
   registerChatHandlers(socket);
 });
-
