@@ -8,23 +8,28 @@ type authContextProps = {
 type setLoggedIn = (loginStatus: boolean) => void;
 type setUsername = (username: string) => void;
 type setSessionToken = (token: string) => void;
+type setProfilePicture = (profilePicture: string) => void;
 
 type authContext = {
   isLoggedIn: boolean,
   username: string,
   sessionToken: string,
+  profilePictureUrl: string | null,
   setLoggedIn: setLoggedIn,
   setUsername: setUsername,
   setSessionToken: setSessionToken 
+  setProfilePictureUrl: setProfilePicture
 };
 
 const AuthContextValues = createContext<authContext>({
   isLoggedIn: false,
   username: "",
   sessionToken: "",
+  profilePictureUrl: null,
   setLoggedIn: () => {},
   setUsername: () => {},
   setSessionToken: () => {},
+  setProfilePictureUrl: () => {}
 });
 
 // Creates a function that stores the key value pair in local storage
@@ -49,12 +54,15 @@ function AuthContext({ children }: authContextProps) {
   const [username, setUsername] = useState("");
   const [sessionToken, setSessionToken] = useState("");
 
+  // browser automatically caches the profile picture, no need 
+  // to save to local storage then
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
+
   useEffect(() => {
     const cachedUsername = localStorage.getItem("username");
     const cachedSessionToken = localStorage.getItem("sessionToken");
 
     if(cachedSessionToken && cachedUsername) {
-
       const siginInfo : loginInfo = {
         username: cachedUsername, 
         sessionToken: cachedSessionToken, 
@@ -81,6 +89,11 @@ function AuthContext({ children }: authContextProps) {
         if(loginResponse.loggedIn) {
           setSessionToken(cachedSessionToken);
           setUsername(cachedUsername);
+
+          if(loginResponse.profilePicture) {
+            setProfilePictureUrl(URL.createObjectURL(loginResponse.profilePicture));
+            console.log(profilePictureUrl);
+          }
         }
       })
       .catch(() => {
@@ -96,9 +109,11 @@ function AuthContext({ children }: authContextProps) {
     isLoggedIn: isLoggedIn, 
     username: username, 
     sessionToken: sessionToken,
+    profilePictureUrl: profilePictureUrl,
     setLoggedIn: setIsLoggedIn,
     setUsername: cachedSetUsername, 
     setSessionToken: cachedSetSessionToken,
+    setProfilePictureUrl: setProfilePictureUrl,
   };
 
   return (

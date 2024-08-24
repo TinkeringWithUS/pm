@@ -3,10 +3,42 @@
 
     display: flex; 
     flex-direction: column;
+    align-items: center;
 
+    max-height: 80%;
+
+    overflow-y: auto;
 }
 
 .user-message {
     display: flex;
     justify-content: space-evenly;
+    width: 40%;
+    /* justify-content:flex-end; */
+}
+
+.user-profile-description {
+    height: fit-content; 
+    width: auto;
+}
+
+.message-username {
+    user-select: contain;
+    -moz-user-select: none;
+}
+
+.user-profile-picture {
+    aspect-ratio: 1/1;
+    width: 10%;
+    height: 10%;
+    border-radius: 50%;
+
+    user-select: none;
+    -moz-user-select: -moz-none;
+}
+
+#chatmessage-input {
+    width: 40%;
+    text-align: center;
+    position: sticky;
 }

@@ -1,0 +1,56 @@
+
+@keyframes fade {
+    0%, 100% {
+        opacity: 0;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+
+#logged-in-notif {
+    position: fixed;
+    
+    opacity: 0;
+
+    bottom: 5%;
+    left: 5%;
+
+    background-color: #28a745;
+    color: white;
+
+    width: auto;
+    height: auto;
+    aspect-ratio: 1 / 1;
+
+    display: flex;
+    place-items: center;
+
+    border-radius: 10%;
+
+    animation: fade 2s linear;
+}
+
+
+#failed-logged-in-notif {
+    position: fixed;
+    
+    opacity: 0;
+
+    bottom: 5%;
+    left: 5%;
+
+    background-color: red;
+    color: black;
+
+    width: auto;
+    height: auto;
+    aspect-ratio: 1 / 1;
+
+    display: flex;
+    place-items: center;
+
+    border-radius: 10%;
+}
+

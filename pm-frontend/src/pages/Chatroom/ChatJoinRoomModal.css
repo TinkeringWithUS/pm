@@ -1,0 +1,33 @@
+#join-room-modal {
+    position: fixed;
+
+    top: 50%;
+    left: 50%;
+    
+    z-index: 10;
+
+    display: flex;
+    place-items: center;
+
+}
+
+#join-room-modal-form {
+    display: flex;
+    flex-direction: column;
+
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    z-index: 10;
+}
+
+/* #join-modal-background {
+    background-color: rgba(0, 0, 0, 0.5);
+
+    position: fixed;
+    top: 0;
+    left: 0;
+
+    width: 100vw; 
+    height: 100vh;
+} */

@@ -6,6 +6,8 @@ import { Link } from "react-router-dom";
 
 import { AuthContextValues } from "../../contexts/AuthContext";
 
+import "./SigninView.css";
+
 type formErrors = {
   username: boolean,
   password: boolean
@@ -19,18 +21,21 @@ function SignInView() {
     password: false
   });
 
-  const [password, setPassword] = useState<string>("");
+  const [loginAttempt, setLoginAttempt] = useState<boolean | null>(null);
+
+  const [displayUsername, setDisplayUsername] = useState("");
+  const [displayPassword, setDisplayPassword] = useState<string>("");
   // const [username, setUsername] = useState<string>("");
   // const [showAlreadyRegistered, setShowAlreadyRegistered] = useState<boolean>(false);
 
-  const { username, setLoggedIn, setUsername, setSessionToken } = useContext(AuthContextValues);
+  const { username, isLoggedIn, setLoggedIn, setUsername, setSessionToken } = useContext(AuthContextValues);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
 
     event.preventDefault();
 
     // checks if username or password is empty
-    if(!username) {
+    if(!displayUsername) {
       setFormErrors((prevFormErrors) => {
         const newFormErrors = {
           username: true,
@@ -40,7 +45,7 @@ function SignInView() {
       });
     }
 
-    if(!password) {
+    if(!displayPassword) {
       setFormErrors((prevFormErrors) => {
         const newFormErrors = {
           username: prevFormErrors.username,
@@ -50,12 +55,14 @@ function SignInView() {
       });
     }
 
-    setError(!password || !username);
+    setError(!displayPassword || !username);
 
     const signInData: authValues = {
-      username: username,
-      password: password,
+      username: displayUsername,
+      password: displayPassword,
     }
+
+    console.log("sending username: " + displayUsername + ". when signing in");
 
     // Note: adding headers to post request 
     // with application/json allows the 
@@ -76,10 +83,18 @@ function SignInView() {
           // session token is empty string
           if(!data.registered) {
             setLoggedIn(false);
+            setDisplayPassword("");
+
+            setLoginAttempt(false);
             console.log("failed to sign in");
           } else {
             // setAlreadyRegistered(true);
             setSessionToken(data.sessionToken);
+            setUsername(displayUsername);
+            setDisplayPassword("");
+            setDisplayUsername("");
+
+            setLoginAttempt(true);
             setLoggedIn(true);
 
             console.log("successful sign in");
@@ -96,7 +111,8 @@ function SignInView() {
         <div className="auth-inputs">
           <label htmlFor="auth-username">Username</label>
           <input type="text" name="username" id="auth-username"
-            value={username} onChange={(e) => setUsername(e.target.value)} />
+            value={displayUsername} onChange={(e) => setDisplayUsername(e.target.value)} 
+            />
           {
             error && formErrors.username &&
             <div className="auth-error">
@@ -108,8 +124,8 @@ function SignInView() {
         <div className="auth-inputs">
           <label htmlFor="auth-password">Password</label>
           <input type="password" name="password" id="auth-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)} />
+            value={displayPassword}
+            onChange={(e) => setDisplayPassword(e.target.value)} />
           {
             error && formErrors.password &&
             <div className="auth-error">
@@ -122,6 +138,21 @@ function SignInView() {
       <Link to="/register">
         Register
       </Link>
+      {
+        isLoggedIn && (
+          <div id="logged-in-notif">
+            Logged In! 
+          </div>
+        )  
+      }
+      {
+        (!loginAttempt) && (
+          <div id="failed-logged-in-notif">
+            Failed to login
+          </div>
+        )
+      }
+      
     </div>
   );
 }

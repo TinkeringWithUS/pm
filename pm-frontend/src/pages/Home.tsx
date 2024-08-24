@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 
-import { io } from "socket.io-client";
 
 function HomeView() {
 

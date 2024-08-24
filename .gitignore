@@ -1,5 +1,5 @@
+backend/db.env
+backend/profile_pictures/*
 node_modules/*
-backend/node_modules/*
-deleted-code/*
-.pytest_cache/*
 .github/*
+.pytest_cache/*

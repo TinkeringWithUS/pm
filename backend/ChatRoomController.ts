@@ -1,6 +1,6 @@
 import { Socket } from "socket.io";
 import { CHAT_GET_MESSAGE_SIGNAL, CHAT_SEND_MESSAGE_SIGNAL, CHAT_NEW_MESSAGE_SIGNAL, getChatMessages, userMessage, newChatMessage, chatRoom } from "../shared/networkInterface";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, ChatRoom } from "@prisma/client";
 import { usernamesToUsers } from "./AuthRoutes";
 import { chatRoomController } from "./ChatHandlers";
 
@@ -30,7 +30,7 @@ import { chatRoomController } from "./ChatHandlers";
 // };
 
 // TODO: allow same names because of the id system
-class ChatRoom {
+class ChatRoomModel {
 
   private messages: userMessage[];
   private chatRoomId: number;
@@ -50,27 +50,27 @@ class ChatRoom {
         username: username
       }
     })
-    .then((userRecord) => { return userRecord?.id; })
-    .then((userId) => {
-      if(userId) {
-        // if already joined, no need to join again
-        return dbClient.userJoinedRooms.upsert({
-          where: {
-            userJoinedRoomId: {
+      .then((userRecord) => { return userRecord?.id; })
+      .then((userId) => {
+        if (userId) {
+          // if already joined, no need to join again
+          return dbClient.userJoinedRooms.upsert({
+            where: {
+              userJoinedRoomId: {
+                userId: userId,
+                joinedRoomId: this.chatRoomId
+              }
+            },
+            create: {
               userId: userId,
-              joinedRoomId: this.chatRoomId
-            }
-          },
-          create: {
-            userId: userId,
-            joinedRoomId: this.chatRoomId,
-          },
-          update: { }
-        });
-      } else {
-        return null;
-      }
-    });
+              joinedRoomId: this.chatRoomId,
+            },
+            update: {}
+          });
+        } else {
+          return null;
+        }
+      });
 
     socket.join("" + this.chatRoomId);
   }
@@ -92,30 +92,30 @@ class ChatRoom {
         username: username
       }
     })
-    .then((userRecord) => {
-      if(userRecord) {
-        return userRecord.id; 
-      } else {
-        return -1;
-      }
-    })
-    .then((userId) => {
-      console.log("user id in send message: " + userId);
-      if(userId > -1) {
-        dbClient.chatMessages.create({
-          data: {
-            userId: userId,
-            username: username,
-            roomId: this.chatRoomId,
-            roomname: this.roomName,
-            body: text,
-          }
-        })
-        .then((chatMessageRecord) => {
-          console.log(JSON.stringify(chatMessageRecord));
-        });
-      }
-    });
+      .then((userRecord) => {
+        if (userRecord) {
+          return userRecord.id;
+        } else {
+          return -1;
+        }
+      })
+      .then((userId) => {
+        console.log("user id in send message: " + userId);
+        if (userId > -1) {
+          dbClient.chatMessages.create({
+            data: {
+              userId: userId,
+              username: username,
+              roomId: this.chatRoomId,
+              roomname: this.roomName,
+              body: text,
+            }
+          })
+            .then((chatMessageRecord) => {
+              console.log(JSON.stringify(chatMessageRecord));
+            });
+        }
+      });
 
     this.messages.push(message);
 
@@ -140,8 +140,6 @@ class ChatRoom {
   async getMessages(dbClient: PrismaClient, numMessages?: number, offset = 0) {
     // TODO: perform validation of inputs, and use offset 
     if (numMessages) {
-      const numTotalMessages = this.messages.length;
-
       console.log("before query Raw for getting messages");
 
       // https://stackoverflow.com/questions/73693136/prisma-postgresql-queryraw-error-code-42p01-table-does-not-exist
@@ -157,14 +155,22 @@ class ChatRoom {
 
       console.log("after query Raw for getting messages");
 
+      console.log("num messages: " + dbMessages.length);
+
       // only really need to fetch messages when 1. need past messages 
       // 2. on start, when we have no messages
       if (this.messages.length === 0) {
         this.messages = dbMessages;
       }
 
+      console.log("this.messages length: " + this.messages.length);
+
       // slice is [start, end)
-      return this.messages.slice(numTotalMessages - numMessages - 1, numTotalMessages);
+      // grab the most recent messages 
+      const numTotalMessages = this.messages.length;
+      console.log("start: " + (numTotalMessages - numMessages));
+      console.log("end: " + numTotalMessages);
+      return this.messages.slice(numTotalMessages - numMessages, numTotalMessages);
     }
     return [];
   }
@@ -172,14 +178,14 @@ class ChatRoom {
 
 
 class ChatRoomController {
-  private roomNameToChatRoom: Map<string, ChatRoom>;
+  private roomNameToChatRoom: Map<string, ChatRoomModel>;
   private roomNameToId: Map<string, number>;
 
   private dbClient: PrismaClient;
 
   constructor(dbClient: PrismaClient) {
-    this.roomNameToChatRoom = new Map<string, ChatRoom>();
-    this.roomNameToId  = new Map<string, number>();
+    this.roomNameToChatRoom = new Map<string, ChatRoomModel>();
+    this.roomNameToId = new Map<string, number>();
 
     this.dbClient = dbClient;
     console.log("db client: " + this.dbClient);
@@ -191,7 +197,7 @@ class ChatRoomController {
 
     for (const room of allRooms) {
       this.roomNameToId.set(room.name, room.id);
-      this.roomNameToChatRoom.set(room.name, new ChatRoom(room.id, room.name));
+      this.roomNameToChatRoom.set(room.name, new ChatRoomModel(room.id, room.name));
     }
   }
 
@@ -213,7 +219,7 @@ class ChatRoomController {
     });
 
     this.roomNameToId.set(newRoomName, newRoomRecord.id);
-    this.roomNameToChatRoom.set(newRoomName, new ChatRoom(newRoomRecord.id, newRoomName));
+    this.roomNameToChatRoom.set(newRoomName, new ChatRoomModel(newRoomRecord.id, newRoomName));
 
     const newRoom: chatRoom = {
       name: newRoomName,
@@ -224,17 +230,34 @@ class ChatRoomController {
   }
 
   joinRoom(socket: Socket, roomName: string, username: string): boolean {
-    if(!this.roomNameToChatRoom.has(roomName)) {
+    if (!this.roomNameToChatRoom.has(roomName)) {
       return false;
     }
 
     this.roomNameToChatRoom.get(roomName)?.joinRoom(socket, username, this.dbClient);
-    return true; 
+    return true;
+  }
+
+  // try to find all the chat rooms with the search terms (like room name 
+  // and later room description)
+  async searchRooms(chatroomNameToSearch: string) {
+    // general query "%(term|term)%"
+    // constructing term|term|term etc... 
+    // let searchString = searchTerms.map((term) => {
+    //   return term;
+    // }).reduce((accumulatedSearchTerms, searchTerm) => {
+    //   return accumulatedSearchTerms += searchTerm + "|";
+    // });
+
+    // searchString = searchString.slice(0, -1);
+    // searchString = "(%" + searchString + "%)";
+    const foundChatRooms = await this.dbClient.$queryRaw<ChatRoom[]>`SELECT * FROM "ChatRoom" WHERE name ILIKE '%${chatroomNameToSearch}%'`;
+    return foundChatRooms;
   }
 
   sendMessage(roomName: string, text: string, username: string, socket: Socket): boolean {
     const chatRoom = this.roomNameToChatRoom.get(roomName);
-    if(chatRoom) {
+    if (chatRoom) {
       chatRoom.sendMessage(socket, username, text, this.dbClient);
       return true;
     }
@@ -243,7 +266,7 @@ class ChatRoomController {
 
   async getMessages(roomName: string, socket: Socket, numMessages?: number) {
     const chatRoom = this.roomNameToChatRoom.get(roomName);
-    if(chatRoom) {
+    if (chatRoom) {
       const DEFAULT_MESSAGES_TO_DISPLAY = 20;
 
       const messages = await chatRoom.getMessages(this.dbClient, numMessages ?? DEFAULT_MESSAGES_TO_DISPLAY);

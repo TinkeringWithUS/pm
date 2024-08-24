@@ -10,6 +10,8 @@ type userInfo = {
   mouseInfo: mouseMove
 };
 
+const SESSION_COOKIE = "session-token";
+
 type authValues = {
   username: string,
   password: string
@@ -27,7 +29,8 @@ type loginInfo = {
 };
 
 type loginResponse = {
-  loggedIn: boolean
+  loggedIn: boolean,
+  profilePicture: Blob | null
 };
 
 type chatJoinRequest = {
@@ -37,23 +40,36 @@ type chatJoinRequest = {
 
 type chatJoinRoomRequest = {
   username: string, 
-  roomToJoin: string
+  roomToJoin: string,
+  roomToJoinId: number,
 };
 
 type chatJoinRoomResponse = {
-  roomsJoined: string[]
+  roomsJoined: chatRoom[]
 };
 
 type chatCreateRoomRequest = {
+  username: string,
   roomName: string
 };
 
 type chatCreateRoomResponse = {
-  created: boolean
+  created: boolean,
+  id: number
+};
+
+type chatSearchRoomRequest = {
+  searchName: string
+  // searchTerms: string[] // TODO: try this later, the sql query is quite difficult
+};
+
+type chatSearchRoomResponse = {
+  foundRooms: chatRoom[]
 };
 
 type chatRoom = {
   name: string,
+  id: number
 };
 
 type chatJoinResponse = {
@@ -67,7 +83,9 @@ export {
   type chatJoinRequest, type chatJoinResponse, 
   type chatJoinRoomRequest, type chatJoinRoomResponse,
   type chatCreateRoomRequest, type chatCreateRoomResponse,
-  type chatRoom, BACKEND_URL
+  type chatSearchRoomRequest, type chatSearchRoomResponse,
+  type chatRoom, BACKEND_URL,
+  SESSION_COOKIE
 };
 
 const DOC_CONNECT_SIGNAL = "doc-connect";
@@ -85,7 +103,7 @@ type userMove = {
 const MOVE_SIGNAL = "move";
 
 type userMessage = {
-  user: string,
+  username: string,
   body: string,
 };
 

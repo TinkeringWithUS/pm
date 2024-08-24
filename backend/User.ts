@@ -102,8 +102,16 @@ class User {
     console.log("this.username: " + this.username + ". this password hash: " + this.passwordHash);
     console.log("is same hash: " + isSameHash);
     if(compareSync(password, this.passwordHash)) {
-    // if (this.passwordHash === signInHash) {
+      // TODO: ensure session token will be unique
       this.activeSessionToken = generateSessionToken();
+      while (await dbClient.user.findFirst({
+        where: {
+          activeSessionToken: this.activeSessionToken
+        }
+      })) {
+        this.activeSessionToken = generateSessionToken();
+      }
+
       this.loginTime = new Date();
 
       await dbClient.user.update({
@@ -140,20 +148,34 @@ class User {
       return false;
     }
 
-    // TODO: add error handling here if the update fails
     const userJoinedRoomRecord = await dbClient.userJoinedRooms.upsert({
       where: {
         userJoinedRoomId: {
           userId: user.id,
           joinedRoomId: roomId
-        }
-      }, 
+        } 
+      },
       create: {
         userId: user.id,
         joinedRoomId: roomId
-      }, 
-      update: { }
+      },
+      update: {}
     });
+
+    // TODO: add error handling here if the update fails
+    // const userJoinedRoomRecord = await dbClient.userJoinedRooms.upsert({
+    //   where: {
+    //     userJoinedRoomId: {
+    //       userId: user.id,
+    //       joinedRoomId: roomId
+    //     }
+    //   }, 
+    //   create: {
+    //     userId: user.id,
+    //     joinedRoomId: roomId
+    //   }, 
+    //   update: { }
+    // });
 
     if(!userJoinedRoomRecord) {
       return false;
@@ -168,8 +190,61 @@ class User {
     return true;
   }
 
-  // TODO: replace
-  public getRooms() {
+  // TODO: optimize the number of database queries being performed
+
+  public async getRooms(dbClient: PrismaClient) {
+    const userRecord = await dbClient.user.findFirst({
+      where: {
+        username: this.username
+      }
+    });
+
+    if (!userRecord) {
+      console.error("User not found in database in getRooms");
+      return this.chatRooms;
+    }
+
+    console.log("getRooms in User.ts. user id: " + userRecord.id);
+
+    const joinedRoomRecords = await dbClient.userJoinedRooms.findMany({
+      where: {
+        userId: userRecord.id
+      }
+    });
+
+    // check if anything has changed in chatrooms, if not, 
+    // return this.chatrooms (still valid)
+    if(joinedRoomRecords.every((chatRoom) => {
+      return this.chatRooms.find((chatroom) => {
+        if(chatroom.id === chatRoom.joinedRoomId) {
+          return true;
+        }
+      });
+    })) {
+      return this.chatRooms;
+    }
+
+    const chatRoomsRecords = [];
+    for (const record of joinedRoomRecords) {
+      // look up the room name from the record
+      const chatRoomRecord = await dbClient.chatRoom.findFirst({
+        where: {
+          id: record.joinedRoomId
+        }
+      });
+
+      if(!chatRoomRecord) {
+        console.error("could not find chat room from joined room id: " + record.joinedRoomId);
+      } else {
+        chatRoomsRecords.push(chatRoomRecord);
+      }
+    }
+
+    // TODO: this line breaks the entire caching idea
+    this.chatRooms = chatRoomsRecords;
+
+    console.log("returning this.chatrooms: " + JSON.stringify(this.chatRooms));
+
     return this.chatRooms;
   }
 
@@ -237,6 +312,8 @@ async function loadUser(dbClient: PrismaClient, username: string) {
       }
     }
 
+    console.log("User to joined rooms in load: " + JSON.stringify(userToJoinedRooms));
+
     // FIXME: too many confusing and overlapping variable names
     const joinedChatRooms: chatRoom[] = joinedRooms.map((joinedChatRoom) => {
       const chatRoom: chatRoom = {
@@ -245,6 +322,9 @@ async function loadUser(dbClient: PrismaClient, username: string) {
       };
       return chatRoom;
     });
+
+    console.log("joined chat rooms in load");
+    console.log(JSON.stringify(joinedChatRooms));
 
     // FIXME: passing in password hash, but constructor is hashing the password
     // so double hashing is stopping verification

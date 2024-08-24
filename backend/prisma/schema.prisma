@@ -19,7 +19,7 @@ model User {
   passwordHash String @unique
   salt String @unique
   profilePictureFileName String @default("")
-  activeSessionToken String? 
+  activeSessionToken String? @unique
   loginTime String?
 }
 
@@ -34,8 +34,10 @@ model ChatRoom {
 // if user joins a new room, add a record to this table, 
 // if user leaves a room, delete record
 model UserJoinedRooms {
-  userId Int @unique // userId and joinedRoomId are both primary keys, must be unique
-  joinedRoomId Int @unique // room that userId has joined 
+  // userId Int @unique // userId and joinedRoomId are both primary keys, must be unique
+  // joinedRoomId Int @unique // room that userId has joined 
+  userId Int 
+  joinedRoomId Int 
   @@id(name: "userJoinedRoomId", [userId, joinedRoomId]) 
 }
 

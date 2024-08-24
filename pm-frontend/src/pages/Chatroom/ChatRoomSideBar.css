@@ -1,7 +1,27 @@
 .rooms-side-bar {
+    width: 20%;
+    height: 100%;
 
+    display: flex;
+    justify-content: flex-start;
+
+    list-style-type: none;
+}
+
+.room-options {
+    list-style-type: none;
 }
 
 .rooms-options {
     list-style-type: none;
 }
+
+.rooms-option:hover {
+    background-color: red;
+}
+
+.rooms-options-selected {
+    background-color: red;
+}
+
+

@@ -9,7 +9,7 @@ const chatRoomController = new ChatRoomController(prisma);
 chatRoomController.loadFromDatabase();
 
 // TODO: Do authentication for chats
-function handleCreateRoom(createData: chatCreateMessage, socket: Socket) {
+async function handleCreateRoom(createData: chatCreateMessage, socket: Socket) {
   const user = usernamesToUsers.get(createData.username);
 
   console.log("handle create room. room name: " + createData.roomname);
@@ -20,25 +20,23 @@ function handleCreateRoom(createData: chatCreateMessage, socket: Socket) {
     return;
   }
 
-  const chatRoomIndex = user.getRooms().findIndex((chatRoom) => {
+  const joinedRooms = await user.getRooms(prisma);
+
+  const roomIndex = joinedRooms.findIndex((chatRoom) => {
     return chatRoom.name === createData.roomname;
   });
 
-  // trying to create a room that already exists
-  if (chatRoomIndex > -1) {
-    const chatRoom = user.getRooms().at(chatRoomIndex);
+  if(roomIndex > -1) {
 
   } else {
-    chatRoomController.createRoom(createData.roomname)
-    .then((newRoom) => {
-      if(newRoom) {
-        // TODO: Error handling for when !user
-        const user = usernamesToUsers.get(createData.username);
-        user?.joinChatRoom(newRoom.id, prisma);
+    const newRoom = await chatRoomController.createRoom(createData.roomname);
 
-        chatRoomController.joinRoom(socket, createData.roomname, createData.username);
-      }
-    });
+    if(newRoom) {
+      const user = usernamesToUsers.get(createData.username);
+      user?.joinChatRoom(newRoom.id, prisma);
+
+      chatRoomController.joinRoom(socket, createData.roomname, createData.username);
+    }
   }
 }
 
@@ -70,7 +68,7 @@ function handleChatSendMessage(chatInfo: chatMessage, socket: Socket) {
 function registerChatHandlers(socket: Socket) {
   // TODO: figure out a way to pass the socket into the handlers
   socket.on(CHAT_SEND_MESSAGE_SIGNAL, (messageData: chatMessage) => { handleChatSendMessage(messageData, socket) })
-  socket.on(CHAT_CREATE_SIGNAL, (createData: chatCreateMessage) => { handleCreateRoom(createData, socket) })
+  socket.on(CHAT_CREATE_SIGNAL, async (createData: chatCreateMessage) => { await handleCreateRoom(createData, socket) })
   socket.on(CHAT_GET_MESSAGE_SIGNAL, (roomName: string, numMessages?: number) => { handleGetMessages(roomName, socket, numMessages) })
 }
 

@@ -30,7 +30,7 @@ function RegisterView() {
     event.preventDefault();
 
     // checks if username or password is empty
-    if(!username) {
+    if (!username) {
       setFormErrors((prevFormErrors) => {
         const newFormErrors = {
           username: true,
@@ -40,7 +40,7 @@ function RegisterView() {
       });
     }
 
-    if(!password) {
+    if (!password) {
       setFormErrors((prevFormErrors) => {
         const newFormErrors = {
           username: prevFormErrors.username,
@@ -52,7 +52,7 @@ function RegisterView() {
 
     setError(!password || !username);
 
-    const registerData : authValues = {
+    const registerData: authValues = {
       username: username,
       password: password,
     }
@@ -61,7 +61,7 @@ function RegisterView() {
     // with application/json allows the 
     // server to actually parse the json data, else
     // we get undefines
-    if(!error) {
+    if (!error) {
       // POST 
       fetch(BACKEND_URL + "/register", {
         method: "POST",
@@ -73,7 +73,7 @@ function RegisterView() {
       })
         .then(response => response.json())
         .then((data: authResponse) => {
-          if(!data.registered) {
+          if (!data.registered) {
             setLoggedIn(false);
             console.log("failed to register");
           } else {
@@ -127,5 +127,5 @@ function RegisterView() {
   );
 }
 
-export default RegisterView;
+export { RegisterView };
 

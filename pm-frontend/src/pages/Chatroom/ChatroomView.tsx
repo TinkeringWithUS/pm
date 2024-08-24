@@ -1,6 +1,6 @@
-import { FormEvent, useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
-import { BACKEND_URL, chatCreateRoomRequest, chatCreateRoomResponse, chatJoinRoomRequest, chatRoom } from "../../../../shared/networkInterface";
+import { chatJoinRoomRequest, chatJoinRoomResponse, chatRoom } from "../../../../shared/networkInterface";
 import { DEFAULT_ROOM_NAME } from "./chatConstants";
 
 import { socket } from "../../utils/socket";
@@ -9,116 +9,94 @@ import { AuthContextValues } from "../../contexts/AuthContext";
 import { ChatMessageDisplay } from "./ChatMessages";
 import { ChatRoomSideBar } from "./ChatRoomSideBar";
 
+import { joinRoom } from "./ChatUtils";
+import { ChatJoinRoomModal } from "./ChatJoinRoomModal";
+import { ChatCreateRoomModal } from "./ChatCreateRoomModal";
+
+import "./ChatroomView.css";
+import { modalContextValues } from "../../contexts/ModalContext";
 
 function ChatroomView() {
 
-  const [rooms, setRooms] = useState<chatRoom[]>([{ name: DEFAULT_ROOM_NAME }]);
+  const { username } = useContext(AuthContextValues);
+  const { anyModalOpen, setAnyModalOpen } = useContext(modalContextValues);
 
+  // TODO: use room id system instead of room names
+  // const [joinRoomId, setJoinRoomId] = useState(0);
+  const [rooms, setRooms] = useState<chatRoom[]>([{ id: -1, name: DEFAULT_ROOM_NAME }]);
   const [selectedRoom, setSelectedRoom] = useState<number>(0);
 
   const [joinDialogVisibility, setJoinDialogVisibility] = useState(false);
-  const [joinRoomName, setJoinRoomName] = useState("");
-  // TODO: use room id system instead of room names
-  // const [joinRoomId, setJoinRoomId] = useState(0);
-
   const [createDialogVisibility, setCreateDialogVisibility] = useState(false);
-  const [createRoomName, setCreateRoomName] = useState("");
 
-  const [chatRoomError, setChatRoomError] = useState(false);
+  const [joinRoomName] = useState("");
 
-  // const [isConnected, setIsConnected] = useState(socket.connected);
-  const { username } = useContext(AuthContextValues);
+  // TODO: let anyModalOpen be an operation rather than state
+  // why? can deduce this variable from given variables, no need 
+  // for this to exist
+  // const [anyModalOpen, setAnyModalOpen] = useState(false);
 
   console.log("user name from auth context: " + username);
 
+  // TODO: refactor so logic is in the component where it's most relevant
+
   // grab chat rooms current person is in 
-  // TODO: eventually support servers
   const handleSelectRoom = (roomIndex: number) => {
+
+    // when changing selections, make a request to grab recent messages
+    // from the room
+    if (roomIndex === selectedRoom) {
+      return;
+    }
+
     setSelectedRoom(roomIndex);
-  }
 
-  const handleJoinRoom = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    // TODO: get the chat room name to join from event (idk without internet skull)
-    const chatJoinRoomInfo: chatJoinRoomRequest = {
+    const joinRoomInfo: chatJoinRoomRequest = {
       username: username,
-      roomToJoin: joinRoomName
+      roomToJoin: rooms[roomIndex].name,
+      roomToJoinId: rooms[roomIndex].id
     };
 
-    console.log("username: " + username);
-    console.log("join room name: " + joinRoomName);
-
-    fetch(BACKEND_URL + "/chat/join", {
-      method: "POST",
-      body: JSON.stringify(chatJoinRoomInfo),
-      headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-      }
-    })
-      .then(response => response.json())
-      .then((joinResponse: chatCreateRoomResponse) => {
-
-        console.log("/chat/join response: " + JSON.stringify(joinResponse));
-
-        if (!joinResponse.created) {
-          setChatRoomError(true);
+    joinRoom(joinRoomInfo)
+      .then((joinResponse: chatJoinRoomResponse) => {
+        if (!joinResponse.roomsJoined.find((room) => room.name === joinRoomName)) {
+          console.error("programming error, trying to join a room that doesn't exist in handle select room");
         }
-      })
-      .finally(() => {
-        const newRoom : chatRoom = {
-          name: joinRoomName
-        };
-
-        if(rooms[0].name === DEFAULT_ROOM_NAME) {
-          setRooms([newRoom]);
-        } else {
-          setRooms([...rooms, newRoom]);
-        }
-
-        setJoinRoomName("");
-        setJoinDialogVisibility(false);
       });
   }
+
 
   // TODO: don't worry about authentication for joining for now, just send 
   // over the username
-  const handleCreateRoom = (event: FormEvent<HTMLFormElement>) => {
+  const handleJoin = (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
     event.preventDefault();
 
-    const createRoomRequest: chatCreateRoomRequest = {
-      roomName: createRoomName
-    };
+    if (!joinDialogVisibility && !anyModalOpen) {
+      setJoinDialogVisibility(true);
+      setAnyModalOpen(true);
+    } else if (joinDialogVisibility && anyModalOpen) {
+      setJoinDialogVisibility(false);
+      setAnyModalOpen(false);
+    }
+  }
 
-    fetch(BACKEND_URL + "/chat/create", {
-      method: "POST",
-      body: JSON.stringify(createRoomRequest),
-      headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-      }
-    })
-      .then(response => response.json())
-      .then((data: chatCreateRoomResponse) => {
-        console.log("/chat/create. response: " + JSON.stringify(data));
+  const handleCreate = (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+    event.preventDefault();
 
-        if (!data.created) {
-          // throw an error
-          // TODO: on chat room error, pop up error display
-          setChatRoomError(true);
-        }
-      })
-      .finally(() => {
-        setCreateRoomName("");
-        setCreateDialogVisibility(false);
-      });
+    // TODO: somehow need to only display one modal at a time, 
+    // display modal when no other modals are set
+    if (!createDialogVisibility && !anyModalOpen) {
+      setCreateDialogVisibility(true);
+      setAnyModalOpen(true);
+    } else if (createDialogVisibility && anyModalOpen) {
+      setCreateDialogVisibility(false);
+      setAnyModalOpen(false);
+    }
   }
 
   // TODO: trigger fetch messages when things change, e.g. new messages, 
   // joining new rooms 
   // TODO: fix selected room selection
-
   useEffect(() => {
     socket.connect();
 
@@ -127,47 +105,48 @@ function ChatroomView() {
     };
   }, []);
 
+  useEffect(() => {
+    console.log("select room changed. new selected room: " + selectedRoom);
+    console.log(JSON.stringify(rooms));
+  }, [rooms]);
+
 
   return (
-    <div>
-      <ChatRoomSideBar rooms={rooms}
-        setJoinVisibility={setJoinDialogVisibility}
-        setCreateVisibility={setCreateDialogVisibility}
-        setRooms={setRooms}
-        setSelectedRoom={setSelectedRoom}>
+    <div id="chatroom-view">
+      <div id="chatroom-view-side">
+        <ChatRoomSideBar rooms={rooms}
+          setRooms={setRooms}
+          handleSelectRoom={handleSelectRoom}>
 
-      </ChatRoomSideBar>
-
-      <div>
-        Current Room: {rooms[selectedRoom].name}
+        </ChatRoomSideBar>
       </div>
+      <div id="chatroom-view-main">
+        <button onClick={event => handleJoin(event)} className="join-room-modal-button"> Join </button>
+        <button onClick={event => handleCreate(event)} className="create-room-modal-button"> New Room </button>
 
-      {/*  Only logged in users can put messages, nobody else can */}
-      {
-        joinDialogVisibility && (
-          <form onSubmit={(event) => { handleJoinRoom(event) }}>
-            <label htmlFor="join-chat-room">Room Id to Join</label>
-            <input name="room" type="text" id="join-chat-room"
-              value={joinRoomName}
-              onChange={(event) => setJoinRoomName(event.target.value)} />
-            <button type="submit">Join</button>
-          </form>)
-      }
+        <div className="current-joined-room-display">
+          Current Room: {rooms.length === 0 ? DEFAULT_ROOM_NAME : rooms[selectedRoom].name}
+        </div>
 
-      {
-        createDialogVisibility && (
-          <form onSubmit={(event) => handleCreateRoom(event)}>
-            <label htmlFor="create-chat-room">Room Name to Create</label>
-            <input name="room" type="text" id="create-chat-room"
-              value={createRoomName}
-              onChange={(event) => setCreateRoomName(event.target.value)} />
-            <button type="submit">Create</button>
-          </form>)
-      }
+        {/*  Only logged in users can put messages, nobody else can */}
+        <ChatJoinRoomModal rooms={rooms} setRooms={setRooms}
+          setAnyModalOpen={setAnyModalOpen} setSelectedRoom={setSelectedRoom}
+          joinDialogVisibility={joinDialogVisibility}
+          setJoinDialogVisibility={setJoinDialogVisibility}>
 
-      <ChatMessageDisplay currentRoomName={rooms[selectedRoom].name}>
+        </ChatJoinRoomModal>
 
-      </ChatMessageDisplay>
+        <ChatCreateRoomModal rooms={rooms} setRooms={setRooms}
+          setAnyModalOpen={setAnyModalOpen} createDialogVisibility={createDialogVisibility}
+          setCreateDialogVisibility={setCreateDialogVisibility}>
+
+        </ChatCreateRoomModal>
+
+        <ChatMessageDisplay currentRoomName={
+          rooms.length === 0 ? DEFAULT_ROOM_NAME : rooms[selectedRoom].name}>
+
+        </ChatMessageDisplay>
+      </div>
     </div>
   );
 }

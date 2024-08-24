@@ -30,12 +30,6 @@ try {
   console.log("No env file for database connection.");
 }
 
-// console.log("db url: " + process.env.DB_URL);
-// console.log("db key: " + process.env.DB_KEY);
-
-// I want to practice sql, so use prisma orm to create and update
-// but use sql for querying
-
 app.use(cors());
 app.use(json());
 

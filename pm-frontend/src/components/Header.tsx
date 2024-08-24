@@ -1,5 +1,9 @@
 import { Link } from "react-router-dom";
 
+import { AuthContextValues } from "../contexts/AuthContext";
+
+import { useContext } from "react";
+
 import "./Header.css";
 
 type pageMapToRoute = {
@@ -24,10 +28,12 @@ const pageNameToRoutes: pageMapToRoute[] = [
   {
     page: "Chat", 
     route: "/chat"
-  }
+  } 
 ];
 
 function Header() {
+
+  const { isLoggedIn, profilePictureUrl } = useContext(AuthContextValues);
 
   return (
     <ul className="header-item-list">
@@ -39,9 +45,19 @@ function Header() {
         );
       })}
       {/* User Profile Picture when signed in */}
-      <li>
-        Profile Pic
-      </li>
+      {isLoggedIn && (
+        <li>
+          <Link to="/profile">
+            {profilePictureUrl ? (
+              <img src={profilePictureUrl} className="profile-picture-user"/>
+            ) : (
+              "Profile"
+            )}
+          </Link>
+        </li>)}
+      { 
+
+      }
     </ul>
   );
 }
